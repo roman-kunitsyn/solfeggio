@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <script src="./app.js"></script>
+    <title>Vocal</title>
+    <style>
+      body {
+        margin: 0px;
+        padding: 0px;
+        box-sizing: border-box;
+        border: 0px solid black;
+        width: 100vw;
+        height: 100vh;
+        overflow: hidden;
+      }
+      img {
+        width: 80vw;
+        align-self: center;
+        border: 1px solid gray;
+        padding: 10px;
+        margin: 10px;
+      }
+      img.active {
+        border: 2px solid red;
+        box-shadow: 1px 1px 5px black;
+      }
+      .player {
+        margin: 0px;
+        padding: 5px;
+        box-sizing: border-box;
+        border: 1px solid #f1f3f4;
+        background-color: #f1f3f4;
+        width: 100vw;
+        height: 64px;
+        display: flex;
+        flex-direction: row;
+        justify-content: space-around;
+      }
+      #audioPlayer {
+        width: 350px;
+      }
+      .tempo {
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+      }
+      .tempo > span {
+        align-content: center;
+        margin-right: 5px;
+      }
+      .playlist {
+        margin: 0px;
+        padding: 50px 0px;
+        box-sizing: border-box;
+        border: 1px solid #cccdcd;
+        width: 100vw;
+        height: calc(100vh - 64px);
+        overflow: auto;
+        display: flex;
+        flex-direction: column;
+      }
+      .playlist div {
+        display: flex;
+        align-self: center;
+        border: 1px solid #cccdcd;
+        margin: 10px 0px;
+        padding: 5px;
+        box-shadow: 1px 1px 5px #cccdcd;
+      }
+      h1,
+      h2 {
+        align-self: center;
+      }
+    </style>
+  </head>
+
+  <body>
+    <div class="app">
+      <div class="player">
+        <audio id="audioPlayer" controls loop></audio>
+        <div class="tempo">
+          <span>Tempo: </span>
+          <input
+            id="speedInput"
+            name="speedInput"
+            type="number"
+            min="20"
+            max="500"
+            step="10"
+            value="90"
+          />
+        </div>
+      </div>
+      <div class="playlist"></div>
+    </div>
+
+    <script>
+      const { playlist, context } = window;
+
+      const audioPlayer = document.getElementById("audioPlayer");
+      const speedInput = document.getElementById("speedInput");
+      const divPlaylist = document.querySelector(".playlist");
+
+      divPlaylist.addEventListener("click", (e) => {
+        const divActiveTrack = document.querySelector("img.active");
+        const track = e.target.alt;
+        if (track) {
+          audioPlayer.src = `./mp3/${track}.mp3`;
+          speedInput.value = e.target.dataset.tempo;
+
+          audioPlayer.play();
+          e.target.classList.toggle("active");
+          divActiveTrack?.classList.toggle("active");
+          divPlaylist.scrollTo({
+            top: e.target.offsetTop - 120,
+            behavior: "smooth",
+          });
+        }
+      });
+
+      speedInput.addEventListener("change", (e) => {
+        console.log(e.target.value);
+        const divActiveTrack = document.querySelector("img.active");
+        audioPlayer.playbackRate =
+          speedInput.value / divActiveTrack.dataset.tempo;
+      });
+
+      renderWithContext(context);
+
+      window.addEventListener("keydown", (event) => {
+        event.preventDefault();
+        const divActiveTrack = document.querySelector("img.active");
+
+        if (event.code === "Space") {
+          if (audioPlayer.paused) {
+            audioPlayer.play();
+          } else {
+            audioPlayer.pause();
+          }
+        }
+        if (event.code === "ArrowRight" || event.code === "ArrowDown") {
+          if (!divActiveTrack) {
+            const divNextActiveTrack = document.querySelector(
+              `img[data-index="${0}"]`
+            );
+            divNextActiveTrack.dispatchEvent(
+              new Event("click", {
+                bubbles: true,
+              })
+            );
+            return;
+          }
+          let nextIndex = +divActiveTrack.dataset.index + 1;
+          if (nextIndex > playlist.lenght) {
+            return;
+          }
+          const divNextActiveTrack = document.querySelector(
+            `img[data-index="${nextIndex}"]`
+          );
+          divNextActiveTrack?.classList.toggle("active");
+          divActiveTrack?.classList.toggle("active");
+          divNextActiveTrack.dispatchEvent(
+            new Event("click", {
+              bubbles: true,
+            })
+          );
+        }
+        if (event.code === "ArrowLeft" || event.code === "ArrowUp") {
+          if (!divActiveTrack) {
+            const divNextActiveTrack = document.querySelector(
+              `img[data-index="${0}"]`
+            );
+            divNextActiveTrack.dispatchEvent(
+              new Event("click", {
+                bubbles: true,
+              })
+            );
+            return;
+          }
+          let nextIndex = +divActiveTrack.dataset.index - 1;
+          if (nextIndex < 0) {
+            return;
+          }
+          const divNextActiveTrack = document.querySelector(
+            `img[data-index="${nextIndex}"]`
+          );
+          divNextActiveTrack?.classList.toggle("active");
+          divActiveTrack?.classList.toggle("active");
+          divNextActiveTrack.dispatchEvent(
+            new Event("click", {
+              bubbles: true,
+            })
+          );
+        }
+      });
+
+      function renderWithContext(context) {
+        context.forEach((item) => {
+          console.log(item);
+          if (item.children) {
+            let title = document.createElement("h1");
+            title.innerText = item.title;
+            divPlaylist.append(title);
+            renderWithContext(item.children);
+          } else {
+            let title = document.createElement("h2");
+            title.innerText = item.title;
+            divPlaylist.append(title);
+            playlist
+              .slice(item.indexes[0] - 1, item.indexes[1])
+              .forEach((element) => {
+                let img = document.createElement("img");
+                img.src = `./svg/${element.title}.svg`;
+                img.alt = element.title;
+                img.title = element.title;
+                img.dataset.tempo = element.tempo;
+                img.dataset.index = element.index;
+
+                let card = document.createElement("div");
+                let cardIndex = document.createElement("span");
+                cardIndex.innerText = element.title;
+                card.append(cardIndex);
+                card.append(img);
+
+                divPlaylist.append(card);
+              });
+          }
+        });
+      }
+    </script>
+  </body>
+</html>
